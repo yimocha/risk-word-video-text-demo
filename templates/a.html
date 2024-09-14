@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{# 标题 #}
+{% block title %} 首页 {% endblock %}
+
+{# 头部的内容 #}
+{% block header %}{% endblock %}
+
+{# 中间的内容 #}
+{% block content %}
+    <style>
+        #loading {
+            display: none;
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 5px;
+            color: white;
+        }
+    </style>
+    <h2>欢迎来到违禁词检测!</h2>
+    <!-- Nav tabs -->
+    <ul class="nav nav-tabs" id="riskTabId">
+        <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#home">文本</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#menu1">视频</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#menu2">词库</a>
+        </li>
+    </ul>
+
+    <!-- Tab panes -->
+    <div class="tab-content">
+        <div class="tab-pane active container" id="home">
+            <form id="checkTextFormId" class="was-validated">
+                <br>
+                <button type="submit" class="btn btn-primary small">开始检测</button>
+                <div class="mb-3 mt-3">
+                    <label for="checkText">请输入检测的文本：</label>
+                    <textarea class="form-control" placeholder="请输入检测的文本" rows="5" id="checkText"
+                              name="checkText" required></textarea>
+                    <div class="invalid-feedback">请输入检测的文本！</div>
+                </div>
+            </form>
+        </div>
+        <div class="tab-pane container" id="menu1">
+            <div id="loading">Uploading, please wait...</div>
+            <form class="was-validated" id="checkVideoFormId" enctype="multipart/form-data">
+                <br>
+                <button type="submit" class="btn btn-primary">
+                    检测视频
+                </button>
+                <div class="mb-3 mt-3">
+                    <label for="checkVideo">请输入检测的视频：</label>
+                    <input class="form-control" id="checkVideo" type="file" accept="video/mp4" name="file" required/>
+                    <div class="invalid-feedback">请输入检测的视频！</div>
+                    <div id="result"></div>
+                </div>
+            </form>
+        </div>
+        <div class="tab-pane container" id="menu2">使用默认词库</div>
+    </div>
+
+    <!-- 检测结果 -->
+    <div id="checkResultContentId">
+        <b>检测结果</b>
+        <div class="card">
+            <div class="card-body">
+                <div id="checkReslut"></div>
+            </div>
+        </div>
+        <br>
+        <div class="card">
+            <div class="card-body">
+                <div><b>检测报告</b> | <span
+                        style="color: #bfbfbf;font-size: 12px;">声明：本系统查询结果仅供参考，不能作为法律依据。</span>
+                </div>
+                <hr>
+                <div id="riskListId"></div>
+            </div>
+        </div>
+        <br>
+    </div>
+
+{% endblock %}
+
+{# 编写js脚本 #}
+{% block script %}
+    <script>
+
+        /** 表单数据转对象 **/
+        function my_form2Object(id, o = {}) {
+            $.each($(id).serializeArray(), function (i, field) {
+                o[field.name] = field.value;
+            });
+            return o;
+        }
+
+        /** 循环违禁词列表 **/
+        function randerRiskListHtml(data) {
+            $('#checkReslut').html(data['resultText'])
+            if (data.riskList.length == 0) {
+                $('#riskListId').html('<p>未检测到</p>')
+                return
+            }
+            // 循环违禁词列表
+            let riskHtml = ''
+            data.riskList.forEach(fe => {
+                riskHtml += `<div style="display: flex;gap: 20px;align-items: center;justify-items: center;">
+                                    <div><span class="badge bg-danger">${fe.risk_level}</span> ${fe.risk_name} </div>
+                                    <div style="color: #bfbfbf;font-size: 12px;">解析：${fe.reason}</div>
+                                 </div>`
+            })
+            $('#riskListId').html(riskHtml)
+        }
+
+        /** 提交检测 文本 **/
+        $('#checkTextFormId').on('submit', function (event) {
+            event.preventDefault() // 阻止默认提交行为
+            let formData = my_form2Object(this);
+            console.log(formData)
+            if (!formData.checkText) {
+                alert('请输入需要检测的文本')
+                return;
+            }
+            $('#checkReslut').html('')
+            $('#riskListId').html('')
+            // post start
+            $.post('/checkRiskWord', formData, function (res) {
+                console.log(res)
+                // 违禁词检测结果
+                let data = res.data
+                // 渲染页面
+                randerRiskListHtml(data);
+            }) //post end
+
+        })
+
+        /** 上传文件进行检测 **/
+        $('#checkVideoFormId').on('submit', function (event) {
+            event.preventDefault() // 阻止默认提交行为
+
+            $('#loading').show();
+            let submit = $(this).children('button');
+            submit.attr('disabled', true)
+            submit.append('<span class="spinner-grow spinner-grow-sm"></span>')
+
+            let formData = new FormData(this);
+            for (let [key, value] of formData.entries()) {
+                formData[key] = value
+            }
+            console.log(formData)
+            if (!formData.file) {
+                alert('请输入需要检测的文本')
+                return;
+            }
+            $('#checkReslut').html('')
+            $('#riskListId').html('')
+
+            $.ajax({
+                url: '/video2audio2text', // 替换为你的上传 URL
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function (res) {
+                    // 违禁词检测结果
+                    let data = res.data
+                    // 渲染页面
+                    randerRiskListHtml(data);
+                    $('#loading').hide();
+                    submit.attr('disabled', false)
+                    submit.children().remove()
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    $('#result').html('<p style="color: red">发生错误: ' + textStatus + '</p>');
+                    $('#loading').hide();
+                    submit.attr('disabled', false)
+                    submit.children().remove()
+                }
+            });
+
+        })
+
+        // 为所有a标签绑定点击事件
+        $('#riskTabId a').on('click', function (event) {
+            // 获取当前点击的a标签的href属性
+            let href = $(this).attr('href');
+            console.log('点击的链接是:', href);
+            if (href.includes('#menu2')) {
+                $('#checkResultContentId').hide()
+            } else {
+                $('#checkResultContentId').show()
+            }
+            // 可选：如果你需要阻止默认行为
+            // event.preventDefault();
+        });
+    </script>
+{% endblock %}

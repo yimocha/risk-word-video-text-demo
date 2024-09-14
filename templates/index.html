@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <!-- 新 Bootstrap5 核心 CSS 文件 -->
+    <link rel="stylesheet" href="https://cdn.staticfile.net/twitter-bootstrap/5.1.1/css/bootstrap.min.css">
+    <!-- 最新的 Bootstrap5 核心 JavaScript 文件 -->
+    <script src="https://cdn.staticfile.net/twitter-bootstrap/5.1.1/js/bootstrap.bundle.min.js"></script>
+</head>
+<body id="app">
+<div>
+    <h1>视频转文字</h1>
+    <form method="post" action="/video2audio" enctype="multipart/form-data">
+        <input type="file" name="video">
+        <input type="submit" value="提交">
+    </form>
+    <div>
+        <b>结果：</b> {{ result }}
+    </div>
+</div>
+
+<div>
+    <h1>检查文本</h1>
+    <form>
+        <label>
+            <textarea v-model="formData.checkText" name="checkText" cols="5"
+                      style="width: 400px;height: 200px"></textarea>
+        </label>
+        <input type="button" value="提交" @click="submitCheckText()">
+    </form>
+    <div>
+        {{ check_result }}
+    </div>
+</div>
+
+<div>
+    <h1>添加违禁词</h1>
+    <form method="post" action="/add_riskWord" enctype="application/x-www-form-urlencoded">
+        违禁词：<input type="text" name="risk_name">
+        等级：<input type="text" name="risk_level">
+        原因：<input type="text" name="reason">
+        <input type="submit" value="提交">
+    </form>
+</div>
+
+
+<div>
+    <h1>违禁词列表</h1>
+    <div>
+        <ul>
+
+        </ul>
+    </div>
+</div>
+</body>
+
+<script src="https://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js">
+{#<script src="https://cdn.jsdelivr.net/npm/vue@2"></script>#}
+{#<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>#}
+{#<script src="/static/vue2.min.js"></script>#}
+{#<script src="/static/axios.min.js"></script>#}
+<script>
+    let list = []
+
+    function getList() {
+        fetch('get_riskWords')
+            .then(response => response.json())
+            .then(data => {
+                console.log(data)
+                list = data.data
+            })
+            .catch(error => console.error('Error:', error));
+    }
+</script>
+</html>
